@@ -26,6 +26,7 @@ export interface TimelineEventPage {
 export interface TimelineEventQuery {
   itemId?: number
   eventType?: string
+  itemType?: string
   startDate?: string
   endDate?: string
   pageNum?: number

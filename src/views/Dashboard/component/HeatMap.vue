@@ -1,66 +1,5 @@
 <template>
   <n-flex vertical>
-    <n-flex align="center" justify="start">
-      <n-switch v-model:value="showWeekLabels">
-        <template #checked>
-          显示周标签
-        </template>
-        <template #unchecked>
-          隐藏周标签
-        </template>
-      </n-switch>
-      <n-switch v-model:value="showMonthLabels">
-        <template #checked>
-          显示月份标签
-        </template>
-        <template #unchecked>
-          隐藏月份标签
-        </template>
-      </n-switch>
-      <n-switch v-model:value="showColorIndicator">
-        <template #checked>
-          显示颜色指示器
-        </template>
-        <template #unchecked>
-          隐藏颜色指示器
-        </template>
-      </n-switch>
-      <n-switch v-model:value="loading">
-        <template #checked>
-          加载中
-        </template>
-        <template #unchecked>
-          正常显示
-        </template>
-      </n-switch>
-      <n-divider vertical />
-      <span>周开始日：</span>
-      <n-select
-        v-model:value="firstDayOfWeek"
-        :options="weekStartOptions"
-        style="width: 120px"
-      />
-      <n-divider vertical />
-    </n-flex>
-    <n-flex>
-      <n-radio-group v-model:value="size" name="size">
-        <n-radio-button
-          v-for="option in sizeOptions"
-          :key="option.value"
-          :value="option.value"
-          :label="option.label"
-        />
-      </n-radio-group>
-      <n-divider vertical />
-      <n-radio-group v-model:value="value" name="year">
-        <n-radio-button
-          v-for="range in dateRanges"
-          :key="range.value"
-          :value="range.value"
-          :label="range.label"
-        />
-      </n-radio-group>
-    </n-flex>
     <n-alert type="success" title="数据统计">
       <n-flex>
         <n-tag round type="info">
@@ -77,19 +16,12 @@
         </n-tag>
       </n-flex>
     </n-alert>
-    <n-scrollbar x-scrollable style="max-width: 100%">
-      <n-heatmap
-        :data="yearData"
-        :loading-data="yearData"
-        :first-day-of-week="firstDayOfWeek"
-        :loading="loading"
-        :size="size"
-        :show-week-labels="showWeekLabels"
-        :show-month-labels="showMonthLabels"
-        :show-color-indicator="showColorIndicator"
-        :fill-calendar-leading="value === 'recent'"
-      />
-    </n-scrollbar>
+    <n-flex justify="space-around">
+      <n-heatmap :data="yearData" :loading-data="yearData" :first-day-of-week="firstDayOfWeek" size="large"
+        :show-week-labels="showWeekLabels" :show-month-labels="showMonthLabels"
+        :show-color-indicator="showColorIndicator" color-theme="purple" />
+      <n-date-picker v-model:value="selectedYear" type="year" clearable />
+    </n-flex>
   </n-flex>
 </template>
 
@@ -98,24 +30,20 @@ import type { HeatmapFirstDayOfWeek } from 'naive-ui'
 import { computed, ref, watch } from 'vue'
 import { getHeatmap, type HeatmapEntry } from '@/api/heatmap'
 
-const value = ref<'recent' | number>(new Date().getFullYear())
-
 const currentYear = new Date().getFullYear()
-const dateRanges: { value: 'recent' | number; label: string }[] = (() => {
-  const ranges: { value: 'recent' | number; label: string }[] = [
-    { value: 'recent', label: '最近一年' },
-  ]
-  for (let y = currentYear; y >= currentYear - 3; y--) {
-    ranges.push({ value: y, label: String(y) })
-  }
-  return ranges
-})()
+const selectedYear = ref<number | null>(new Date(currentYear, 0, 1).getTime())
 
+const loading = ref(false)
 const rawEntries = ref<HeatmapEntry[]>([])
 
 async function fetchHeatmap(year: number) {
-  const data = await getHeatmap(year)
-  rawEntries.value = data
+  loading.value = true
+  try {
+    const data = await getHeatmap(year)
+    rawEntries.value = data
+  } finally {
+    loading.value = false
+  }
 }
 
 const yearData = computed(() => {
@@ -125,11 +53,14 @@ const yearData = computed(() => {
   }))
 })
 
-fetchHeatmap(value.value as number)
+// 初始加载当前年份
+fetchHeatmap(currentYear)
 
-watch(value, (val) => {
-  if (val !== 'recent') {
-    fetchHeatmap(val)
+// 年份切换时重新请求
+watch(selectedYear, (ts) => {
+  if (ts) {
+    const year = new Date(ts).getFullYear()
+    fetchHeatmap(year)
   }
 })
 
@@ -155,23 +86,6 @@ const dataStats = computed(() => {
 const showWeekLabels = ref(true)
 const showMonthLabels = ref(true)
 const showColorIndicator = ref(true)
-const loading = ref(false)
 const firstDayOfWeek = ref<HeatmapFirstDayOfWeek>(0)
-const size = ref<'small' | 'medium' | 'large'>('medium')
 
-const weekStartOptions = [
-  { label: '周一', value: 0 },
-  { label: '周二', value: 1 },
-  { label: '周三', value: 2 },
-  { label: '周四', value: 3 },
-  { label: '周五', value: 4 },
-  { label: '周六', value: 5 },
-  { label: '周日', value: 6 }
-]
-
-const sizeOptions = [
-  { label: '小', value: 'small' },
-  { label: '中', value: 'medium' },
-  { label: '大', value: 'large' }
-]
 </script>

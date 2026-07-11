@@ -3,7 +3,7 @@
     <div class="item-card">
       <div class="item-card-image">
         <img v-if="item.cover" :src="item.cover" class="item-card-cover" alt="cover" />
-        <span v-else class="item-card-placeholder">IMG</span>
+        <span v-else class="item-card-placeholder">LOADIMG...</span>
       </div>
       <div class="item-card-body">
         <h3 class="item-card-title">{{ item.title }}</h3>

@@ -143,6 +143,7 @@ onMounted(() => loadItem())
               :value="displayRating"
               @update:value="onRateChange"
               :clearable="true"
+              allow-half
             />
             <span v-if="showRateConfirm" class="rate-confirm">
               <n-button size="tiny" type="primary" @click="confirmRating">

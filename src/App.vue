@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { darkTheme } from 'naive-ui'
+import { darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { useUiStore } from '@/stores/ui'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 
@@ -16,7 +16,7 @@ const naiveTheme = computed(() => (ui.isDark ? darkTheme : null))
 </script>
 
 <template>
-  <n-config-provider :theme="naiveTheme">
+  <n-config-provider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN">
     <n-message-provider>
       <DefaultLayout v-if="useLayout">
         <router-view />

@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { getTimelineEvents, type TimelineEventRecord } from '@/api/timeline'
+import { ref, computed, onMounted, watch } from 'vue'
+import { getTimelineEvents, type TimelineEventRecord, type TimelineEventQuery } from '@/api/timeline'
+import { getTypePieChartData, type PieChartEntry } from '@/api/heatmap'
 import TimelineCard from './component/TimelineCard.vue'
-import type { TimelineEventQuery } from '@/api/timeline'
 
 // ----------- data -----------
 const records = ref<TimelineEventRecord[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
+const totalCount = ref(0)
+const typeEntries = ref<PieChartEntry[]>([])
 const hasMore = computed(() => currentPage.value < totalPages.value)
-const scrollEl = ref<HTMLElement | null>(null)
 
 // ----------- filters -----------
 const filterEventType = ref<string | null>(null)
@@ -22,6 +23,7 @@ async function loadPage(page: number, append: boolean) {
   try {
     const params: TimelineEventQuery = { pageSize: 10, pageNum: page }
     if (filterEventType.value) params.eventType = filterEventType.value
+    if (filterItemType.value) params.itemType = filterItemType.value
     const data = await getTimelineEvents(params)
     if (append) {
       records.value.push(...data.records)
@@ -30,6 +32,7 @@ async function loadPage(page: number, append: boolean) {
     }
     totalPages.value = data.pages
     currentPage.value = data.current
+    totalCount.value = data.total
   } finally {
     loading.value = false
   }
@@ -67,14 +70,9 @@ interface MonthGroup {
   days: DayGroup[]
 }
 
-const filteredRecords = computed(() => {
-  if (!filterItemType.value) return records.value
-  return records.value.filter((e) => e.itemType === filterItemType.value)
-})
-
 const groups = computed<MonthGroup[]>(() => {
   const monthMap = new Map<string, TimelineEventRecord[]>()
-  for (const e of filteredRecords.value) {
+  for (const e of records.value) {
     const d = new Date(e.createdAt)
     const key = `${d.getFullYear()}-${d.getMonth() + 1}`
     if (!monthMap.has(key)) monthMap.set(key, [])
@@ -126,51 +124,29 @@ function getIcon(e: TimelineEventRecord): string {
 
 // ----------- stats -----------
 const stats = computed(() => ({
-  total: records.value.length,
-  itemTypes: [...new Set(records.value.map((e) => e.itemType).filter(Boolean))],
+  total: totalCount.value,
+  itemTypes: typeEntries.value,
 }))
 
-const allItemTypes = computed(() => [
-  ...new Set(records.value.map((e) => e.itemType).filter(Boolean)),
-])
+const allItemTypes = computed(() =>
+  typeEntries.value.map((e) => e.name),
+)
 
-// ----------- infinite scroll -----------
-let observer: IntersectionObserver | null = null
-
-function setupObserver() {
-  if (!scrollEl.value) return
-  const sentinel = scrollEl.value.querySelector('.sentinel')
-  if (!sentinel) return
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0]?.isIntersecting && hasMore.value && !loading.value) {
-        loadNextPage()
-      }
-    },
-    { root: scrollEl.value, rootMargin: '200px' },
-  )
-  observer.observe(sentinel)
+async function fetchTypeData() {
+  const data = await getTypePieChartData()
+  typeEntries.value = Object.entries(data).map(([name, value]) => ({ name, value }))
 }
 
-onMounted(async () => {
-  await loadPage(1, false)
-  await nextTick()
-  setupObserver()
-})
-
-watch(hasMore, async (v) => {
-  if (v) {
-    await nextTick()
-    setupObserver()
-  }
+onMounted(() => {
+  loadPage(1, false)
+  fetchTypeData()
 })
 </script>
 
 <template>
   <div class="timeline-layout">
     <!-- ====== LEFT ====== -->
-    <div ref="scrollEl" class="timeline-left">
+    <div class="timeline-left">
       <h2 class="page-title">时间线</h2>
 
       <div v-if="loading && records.length === 0" class="state">加载中...</div>
@@ -192,10 +168,12 @@ watch(hasMore, async (v) => {
           </div>
         </section>
 
-        <!-- sentinel for infinite scroll -->
+        <!-- 加载更多 -->
         <div class="sentinel">
-          <span v-if="loading && records.length > 0" class="loading-tip">加载中...</span>
-          <span v-else-if="!hasMore && records.length > 0" class="no-more">没有更多了</span>
+          <button v-if="hasMore" class="load-more-btn" :disabled="loading" @click="loadNextPage">
+            {{ loading ? '加载中...' : '加载更多' }}
+          </button>
+          <span v-else-if="records.length > 0" class="no-more">没有更多了</span>
         </div>
       </template>
     </div>
@@ -205,29 +183,33 @@ watch(hasMore, async (v) => {
 
     <!-- ====== RIGHT ====== -->
     <aside class="timeline-right">
-      <div class="stats-box">
-        <div class="stat">
-          <span class="stat-num">{{ stats.total }}</span>
-          <span class="stat-label">条记录</span>
+      <div style="position:sticky; top:92px;">
+        <div class="stats-box">
+          <div class="stat">
+            <span class="stat-num">{{ stats.total }}</span>
+            <span class="stat-label">条记录</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num">{{ stats.itemTypes.length }}</span>
+            <span class="stat-label">种类型</span>
+          </div>
         </div>
-        <div class="stat">
-          <span class="stat-num">{{ stats.itemTypes.length }}</span>
-          <span class="stat-label">种类型</span>
+        <div class="filter-section">
+          <h4 class="filter-title">条目类型</h4>
+          <div class="tag-group">
+            <button class="tag" :class="{ active: !filterItemType }" @click="filterItemType = null">
+              全部
+            </button>
+            <button v-for="it in allItemTypes" :key="it" class="tag" :class="{ active: filterItemType === it }"
+              @click="filterItemType = it">
+              {{ it }}
+            </button>
+          </div>
         </div>
+
+        <n-calendar class="calendar" />
       </div>
 
-      <div class="filter-section">
-        <h4 class="filter-title">条目类型</h4>
-        <div class="tag-group">
-          <button class="tag" :class="{ active: !filterItemType }" @click="filterItemType = null">
-            全部
-          </button>
-          <button v-for="it in allItemTypes" :key="it" class="tag" :class="{ active: filterItemType === it }"
-            @click="filterItemType = it">
-            {{ it }}
-          </button>
-        </div>
-      </div>
     </aside>
   </div>
 </template>
@@ -237,7 +219,6 @@ watch(hasMore, async (v) => {
 .timeline-layout {
   display: flex;
   height: 100%;
-  overflow: hidden;
 }
 
 .timeline-left {
@@ -254,10 +235,9 @@ watch(hasMore, async (v) => {
 }
 
 .timeline-right {
-  width: 220px;
+  width: 350px;
   flex-shrink: 0;
   padding: 32px 24px;
-  overflow-y: auto;
 }
 
 /* ===== left ===== */
@@ -316,9 +296,25 @@ watch(hasMore, async (v) => {
   padding: 24px 0;
 }
 
-.loading-tip {
-  font-size: 13px;
-  color: var(--color-text-muted);
+.load-more-btn {
+  padding: 8px 32px;
+  border: 1px solid var(--color-ui2);
+  border-radius: 6px;
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.load-more-btn:hover:not(:disabled) {
+  border-color: #b15e6c;
+  color: #b15e6c;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .no-more {
@@ -353,6 +349,10 @@ watch(hasMore, async (v) => {
 
 .filter-section {
   margin-bottom: 22px;
+}
+
+.calendar {
+  height: 300px;
 }
 
 .filter-title {

@@ -27,7 +27,7 @@ import Nav from './component/Nav.vue'
   flex: 80%;
   display: flex;
   flex-direction: column;
-  max-width: 1100px;
+  max-width: 1300px;
   margin: 0 auto;
 }
 

@@ -4,6 +4,7 @@ import { getItems, type ItemRecord } from '@/api/item'
 import CardList from './component/CardList.vue'
 import HeatMap from './component/HeatMap.vue'
 import CommonPagination from '@/components/CommonPagination.vue'
+import PieChart from '@/views/Dashboard/component/PieChart.vue'
 
 const allItems = ref<ItemRecord[]>([])
 const loading = ref(false)
@@ -43,40 +44,29 @@ onMounted(async () => {
   <div class="dashboard">
     <div v-if="loading" class="dashboard-loading">加载中...</div>
     <template v-else>
-      <HeatMap />
+      <!-- item区 -->
       <section class="dashboard-section">
-        <h2 class="section-title">Planned</h2>
+        <h2 class="section-title">计划中</h2>
         <CardList :items="paged(plannedItems, plannedPage)" />
-        <CommonPagination
-          v-if="plannedItems.length > pageSize"
-          :current-page="plannedPage"
-          :page-size="pageSize"
-          :total="plannedItems.length"
-          @change="plannedPage = $event"
-        />
+        <CommonPagination v-if="plannedItems.length > pageSize" :current-page="plannedPage" :page-size="pageSize"
+          :total="plannedItems.length" @change="plannedPage = $event" />
       </section>
       <section class="dashboard-section">
-        <h2 class="section-title">Doing</h2>
+        <h2 class="section-title">进行中</h2>
         <CardList :items="paged(doingItems, doingPage)" />
-        <CommonPagination
-          v-if="doingItems.length > pageSize"
-          :current-page="doingPage"
-          :page-size="pageSize"
-          :total="doingItems.length"
-          @change="doingPage = $event"
-        />
+        <CommonPagination v-if="doingItems.length > pageSize" :current-page="doingPage" :page-size="pageSize"
+          :total="doingItems.length" @change="doingPage = $event" />
       </section>
       <section class="dashboard-section">
-        <h2 class="section-title">Done</h2>
+        <h2 class="section-title">已完成</h2>
         <CardList :items="paged(doneItems, donePage)" />
-        <CommonPagination
-          v-if="doneItems.length > pageSize"
-          :current-page="donePage"
-          :page-size="pageSize"
-          :total="doneItems.length"
-          @change="donePage = $event"
-        />
+        <CommonPagination v-if="doneItems.length > pageSize" :current-page="donePage" :page-size="pageSize"
+          :total="doneItems.length" @change="donePage = $event" />
       </section>
+      <!-- 热力区 -->
+      <HeatMap />
+      <!-- 饼图区 -->
+      <PieChart />
     </template>
   </div>
 </template>

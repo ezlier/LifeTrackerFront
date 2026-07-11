@@ -26,9 +26,12 @@ const newForm = ref({
 })
 
 const typeOptions = [
+  { label: '动画', value: 'anime' },
   { label: '书籍', value: 'book' },
   { label: '电影', value: 'movie' },
+  { label: '电视剧', value: 'tv' },
   { label: '游戏', value: 'game' },
+  { label: '音乐', value: 'music' },
 ]
 
 const statusOptions = [
@@ -180,9 +183,12 @@ onMounted(() => {
     <!-- Tabs -->
     <n-tabs v-model:value="activeTab" type="line" animated>
       <n-tab-pane name="全部" tab="全部" />
+      <n-tab-pane name="anime" tab="动画" />
       <n-tab-pane name="book" tab="书籍" />
       <n-tab-pane name="movie" tab="电影" />
+      <n-tab-pane name="tv" tab="电视剧" />
       <n-tab-pane name="game" tab="游戏" />
+      <n-tab-pane name="music" tab="音乐" />
 
       <!-- 创建按钮 -->
       <template #suffix>

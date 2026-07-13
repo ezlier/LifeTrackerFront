@@ -22,6 +22,17 @@ export interface FocusCreateParams {
   itemId?: number | null
 }
 
+export interface WebSocketTicket {
+  ticket: string
+  expiresInMs: number
+  endpoint: string
+}
+
+/** POST /ws-ticket —— 获取一次性 WebSocket 握手票据 */
+export function createWebSocketTicket(): Promise<WebSocketTicket> {
+  return api.post('/ws-ticket')
+}
+
 /** POST /focus —— 开始专注，返回任务 id */
 export function createFocus(data: FocusCreateParams): Promise<number> {
   return api.post('/focus', data)

@@ -7,11 +7,12 @@ import {
   resumeFocus,
   completeFocus,
   cancelFocus,
+  type FocusRecord,
 } from '@/api/focus'
 import { getItems } from '@/api/item'
 import type { ItemRecord } from '@/api/item'
 import RainBg from '@/components/RainBg/RainBg.vue'
-import bg from '@/assets/img/bg.png'
+import { createFocusPresence } from '@/services/focusPresence'
 
 // ==================== 共享状态 ====================
 const currentTab = ref<'番茄钟' | '倒计时' | '正计时'>('番茄钟')
@@ -40,6 +41,12 @@ const showSetup = computed(() => !hasActiveTask.value)
 const remainingSeconds = ref(0) // 番茄钟 / 倒计时
 const elapsedSeconds = ref(0)   // 正计时
 let timerInterval: ReturnType<typeof setInterval> | null = null
+
+const focusPresence = createFocusPresence({
+  onBound: reconcilePresenceFocus,
+  onFocusUnavailable: reconcilePresenceFocus,
+  onError: (error) => console.warn('专注在线检测异常:', error),
+})
 
 // ==================== 番茄钟 ====================
 type PomodoroPreset = '50/10' | '30/5' | 'custom'
@@ -184,6 +191,7 @@ async function handleStart() {
       elapsedSeconds.value = 0
     }
 
+    focusPresence.start(id)
     beginInterval()
   } catch (e) {
     console.error('开始专注失败:', e)
@@ -192,9 +200,11 @@ async function handleStart() {
 
 // ==================== 暂停 ====================
 async function handlePause() {
-  if (!taskId.value) return
+  const id = taskId.value
+  if (!id) return
   try {
-    await pauseFocus(taskId.value)
+    await pauseFocus(id)
+    focusPresence.stop()
     clockActive.value = false
     clockPaused.value = true
     stopTimer()
@@ -205,9 +215,11 @@ async function handlePause() {
 
 // ==================== 继续 ====================
 async function handleResume() {
-  if (!taskId.value) return
+  const id = taskId.value
+  if (!id) return
   try {
-    await resumeFocus(taskId.value)
+    await resumeFocus(id)
+    focusPresence.start(id)
     clockActive.value = true
     clockPaused.value = false
     beginInterval()
@@ -269,6 +281,7 @@ function onPhaseEnd() {
 
 // ==================== 重置 ====================
 function fullReset() {
+  focusPresence.stop()
   clockActive.value = false
   clockPaused.value = false
   taskId.value = null
@@ -278,6 +291,50 @@ function fullReset() {
   pomodoroCurrentPhase.value = 1
   pomodoroPhase.value = 'work'
   stopTimer()
+}
+
+function applyPausedFocus(task: FocusRecord) {
+  clockActive.value = false
+  clockPaused.value = true
+  stopTimer()
+
+  if (task.mode === '正计时') {
+    elapsedSeconds.value = Math.max(0, task.actualDuration)
+    return
+  }
+
+  const plannedSeconds = Math.max(1, task.plannedDuration * 60)
+  const actualSeconds = Math.max(0, task.actualDuration)
+
+  if (task.mode === '倒计时') {
+    remainingSeconds.value = Math.max(0, plannedSeconds - actualSeconds)
+    return
+  }
+
+  const phaseSeconds = plannedSeconds / 4
+  const completedPhases = Math.min(3, Math.floor(actualSeconds / phaseSeconds))
+  pomodoroCurrentPhase.value = completedPhases + 1
+  pomodoroPhase.value = pomodoroCurrentPhase.value % 2 === 1 ? 'work' : 'rest'
+  remainingSeconds.value = Math.max(0, Math.ceil(phaseSeconds - (actualSeconds % phaseSeconds)))
+}
+
+async function reconcilePresenceFocus(focusId: number) {
+  try {
+    const { records } = await getRunningFocus()
+    if (taskId.value !== focusId) return
+
+    const task = records.find((record) => record.id === focusId)
+    if (!task) {
+      fullReset()
+      return
+    }
+
+    if (task.status === 'paused') {
+      applyPausedFocus(task)
+    }
+  } catch (error) {
+    console.warn('同步专注在线状态失败:', error)
+  }
 }
 
 // ==================== 页面挂载：恢复未完成任务 ====================
@@ -293,7 +350,7 @@ onMounted(async () => {
     if (!records || records.length === 0) return
 
     const task = records[0]
-    if (task.status !== 'running' && task.status !== 'paused') return
+    if (!task || (task.status !== 'running' && task.status !== 'paused')) return
 
     // 恢复任务
     taskId.value = task.id
@@ -308,6 +365,7 @@ onMounted(async () => {
       if (task.status === 'running') {
         elapsedSeconds.value = task.actualDuration + (nowSec - startSec)
         clockActive.value = true
+        focusPresence.start(task.id)
         beginInterval()
       } else {
         elapsedSeconds.value = task.actualDuration
@@ -343,6 +401,7 @@ onMounted(async () => {
 
     if (task.status === 'running') {
       clockActive.value = true
+      focusPresence.start(task.id)
       beginInterval()
     } else {
       clockPaused.value = true
@@ -355,6 +414,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopTimer()
+  focusPresence.destroy()
 })
 </script>
 

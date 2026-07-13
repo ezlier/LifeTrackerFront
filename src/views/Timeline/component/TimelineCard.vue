@@ -16,6 +16,10 @@ const eventTypeLabel: Record<string, string> = {
   RATE_ITEM: '评分',
   START_ITEM: '开始',
   COMPLETE_ITEM: '完成',
+  FOCUS_SESSION_START: '开始聚焦',
+  FOCUS_SESSION_COMPLETE: '聚焦完成',
+  FOCUS_SESSION_CANCEL: '聚焦取消',
+  LOGIN_SUCCESSFULLY: '登录成功',
 }
 
 const label = computed(() =>
@@ -27,6 +31,18 @@ const label = computed(() =>
 const timeText = computed(() => {
   const d = new Date(props.event.createdAt)
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+})
+
+const displayTitle = computed(() => {
+  if (props.event.itemTitle) return props.event.itemTitle
+  if (props.event.focusSessionDuration != null && props.event.focusSessionDuration != 0) {
+    const minutes = Math.round(props.event.focusSessionDuration / 60)
+    if (minutes == 0) return '完成' + props.event.focusSessionDuration + '秒专注'
+    return `完成 ${minutes} 分钟专注`
+  } else if (props.event.focusSessionDuration == 0){
+    return '启动了一个计时'
+  }
+  return ' ( ⩌⤚⩌)'
 })
 </script>
 
@@ -121,7 +137,7 @@ const timeText = computed(() => {
       <div v-else class="card-img card-img-placeholder">IMG</div>
       <div class="card-body">
         <span class="event-badge">{{ label }}</span>
-        <h4 class="item-title">{{ event.itemTitle || '未命名' }}</h4>
+        <h4 class="item-title">{{ displayTitle }}</h4>
         <p v-if="event.description" class="event-desc">{{ event.description }}</p>
         <span class="item-meta" v-if="event.itemType">{{
           event.itemType
@@ -196,7 +212,7 @@ const timeText = computed(() => {
 .card {
   flex: 1;
   background: var(--color-card-bg);
-  border: 1px solid #f0e9e9;
+  border: 1px solid var(--color-card-border);
   border-radius: var(--border-radius, 8px);
   padding: 14px 18px;
   margin-left: 10px;

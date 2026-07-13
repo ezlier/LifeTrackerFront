@@ -147,8 +147,6 @@ onMounted(() => {
   <div class="timeline-layout">
     <!-- ====== LEFT ====== -->
     <div class="timeline-left">
-      <h2 class="page-title">时间线</h2>
-
       <div v-if="loading && records.length === 0" class="state">加载中...</div>
       <div v-else-if="records.length === 0" class="state">
         <p class="empty-text">暂无时间线数据</p>

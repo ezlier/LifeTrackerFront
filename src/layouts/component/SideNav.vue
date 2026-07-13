@@ -48,6 +48,7 @@ const navItems = [
   { label: '仪表盘', to: '/dashboard' },
   { label: '内容库', to: '/items' },
   { label: '时间线', to: '/timeline' },
+  { label: '番茄钟', to: '/focus' },
   { label: '设置', to: '/settings' },
 ]
 

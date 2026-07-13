@@ -137,7 +137,7 @@ function handleLogout() {
   font-weight: 500;
   border-radius: var(--border-radius);
   border: 2px solid transparent;
-  transition: border-color 0.15s, color 0.15s;
+  transition: all 0.2s;
 }
 
 .menu-item.active a {

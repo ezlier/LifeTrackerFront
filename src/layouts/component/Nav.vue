@@ -78,6 +78,8 @@ const breadcrumbs = computed(() => {
   padding: 2px 24px;
   /* display: flex; */
   align-items: center;
+  border-radius: var(--border-radius);
+  transition: all 0.2s;
 }
 
 .inner {

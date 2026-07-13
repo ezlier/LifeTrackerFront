@@ -8,6 +8,10 @@ import {
   completeFocus,
   cancelFocus,
 } from '@/api/focus'
+import { getItems } from '@/api/item'
+import type { ItemRecord } from '@/api/item'
+import RainBg from '@/components/RainBg/RainBg.vue'
+import bg from '@/assets/img/bg.png'
 
 // ==================== 共享状态 ====================
 const currentTab = ref<'番茄钟' | '倒计时' | '正计时'>('番茄钟')
@@ -20,6 +24,14 @@ const clockPaused = ref(false)
 
 // 是否有活跃任务（运行中或暂停中）
 const hasActiveTask = computed(() => taskId.value !== null && (clockActive.value || clockPaused.value))
+
+// 关联项目
+const items = ref<ItemRecord[]>([])
+const selectedItemId = ref<number | null>(null)
+
+const itemOptions = computed(() =>
+  items.value.map((item) => ({ label: item.title, value: item.id })),
+)
 
 // 是否显示设定界面
 const showSetup = computed(() => !hasActiveTask.value)
@@ -156,6 +168,7 @@ async function handleStart() {
       goal: goal.value.trim(),
       mode,
       plannedDuration,
+      itemId: selectedItemId.value,
     })
     taskId.value = id
     clockActive.value = true
@@ -200,6 +213,15 @@ async function handleResume() {
     beginInterval()
   } catch (e) {
     console.error('恢复失败:', e)
+  }
+}
+
+// ==================== 停止 ====================
+function handleStopClick() {
+  if (currentTab.value === '正计时') {
+    handleComplete()
+  } else {
+    handleStop()
   }
 }
 
@@ -250,6 +272,7 @@ function fullReset() {
   clockActive.value = false
   clockPaused.value = false
   taskId.value = null
+  selectedItemId.value = null
   remainingSeconds.value = 0
   elapsedSeconds.value = 0
   pomodoroCurrentPhase.value = 1
@@ -260,7 +283,13 @@ function fullReset() {
 // ==================== 页面挂载：恢复未完成任务 ====================
 onMounted(async () => {
   try {
-    const { records } = await getRunningFocus()
+    const [itemResult, focusResult] = await Promise.all([
+      getItems({ pageSize: 999 }),
+      getRunningFocus(),
+    ])
+    items.value = itemResult.records
+
+    const { records } = focusResult
     if (!records || records.length === 0) return
 
     const task = records[0]
@@ -269,6 +298,7 @@ onMounted(async () => {
     // 恢复任务
     taskId.value = task.id
     goal.value = task.goal
+    selectedItemId.value = task.itemId
     currentTab.value = task.mode as '番茄钟' | '倒计时' | '正计时'
 
     const nowSec = Math.floor(Date.now() / 1000)
@@ -329,7 +359,10 @@ onUnmounted(() => {
 </script>
 
 <template>
+
   <div class="container">
+    <RainBg class="rain-background" />
+
     <div class="clockCard">
 
 
@@ -362,7 +395,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <button class="btn btn-start" @click="handleStart">开始</button>
+
         </div>
       </div>
 
@@ -385,7 +418,6 @@ onUnmounted(() => {
               <span class="input-label">秒</span>
             </div>
           </div>
-          <button class="btn btn-start" @click="handleStart">开始</button>
         </div>
       </div>
 
@@ -393,7 +425,6 @@ onUnmounted(() => {
       <div v-else-if="currentTab === '正计时' && showSetup" class="clock_display">
         <div class="timer-running">
           <span class="time-display">{{ timerDisplay }}</span>
-          <button class="btn btn-start" @click="handleStart">开始</button>
         </div>
       </div>
 
@@ -410,7 +441,7 @@ onUnmounted(() => {
               继续
             </button>
             <button v-else class="btn btn-pause" @click="handlePause">暂停</button>
-            <button class="btn btn-stop" @click="handleStop">停止</button>
+            <button class="btn btn-stop" @click="handleStopClick">停止</button>
           </div>
         </div>
       </div>
@@ -435,9 +466,16 @@ onUnmounted(() => {
 
       <!-- Goal 输入 -->
       <div class="goal-input-row">
-        <input v-model="goal" :disabled="clockActive || clockPaused" type="text" placeholder="输入专注目标…"
-          class="goal-input" />
+        <n-flex>
+          <n-input v-model:value="goal" :disabled="clockActive || clockPaused" type="text" placeholder="输入专注目标…"
+            class="goal-input" />
+
+          <n-select v-model:value="selectedItemId" :disabled="clockActive || clockPaused" filterable placeholder="关联项目"
+            :options="itemOptions" class="project-select" />
+        </n-flex>
       </div>
+
+      <button v-if="!clockActive && !clockPaused" class="btn btn-start" @click="handleStart">开始</button>
     </div>
   </div>
 </template>
@@ -452,8 +490,6 @@ onUnmounted(() => {
 .clockCard {
   flex: 1;
   width: 100%;
-  background-color: var(--color-card-bg);
-  border: 2px solid var(--color-card-border);
   height: 60dvh;
   display: flex;
   flex-direction: column;
@@ -476,15 +512,20 @@ onUnmounted(() => {
   flex: 0 0 40%;
   width: 100%;
   height: 60dvh;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
 }
 
 /* ====== Tab 按钮 ====== */
 .tab-btn {
   padding: 8px 20px;
+  background-color: transparent;
   border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  color: #555;
+  border-radius: var(--border-radius);
+  color: var(--color-sidebar-text);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -492,13 +533,14 @@ onUnmounted(() => {
 }
 
 .tab-btn.active {
-  border-color: #4caf50;
+  border-color: var(--color-sidebar-border);
   background: rgba(76, 175, 80, 0.15);
-  color: #2e7d32;
+  color: var(--color-sidebar-text-active);
 }
 
 .tab-btn:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: var(--color-sidebar-text-active);
+  color: var(--color-sidebar-text-active);
 }
 
 .tab-btn:disabled {
@@ -513,16 +555,7 @@ onUnmounted(() => {
 }
 
 .goal-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  color: #333;
-  font-size: 15px;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
+  width: 60%;
 }
 
 .goal-input:focus {
@@ -532,6 +565,10 @@ onUnmounted(() => {
 .goal-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.project-select {
+  width: 30%;
 }
 
 /* ====== 番茄钟 ====== */
@@ -549,10 +586,10 @@ onUnmounted(() => {
 
 .preset-btn {
   padding: 8px 20px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  color: #555;
+  border: 2px solid var(--color-card-border);
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: var(--color-sidebar-text);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -563,10 +600,6 @@ onUnmounted(() => {
   border-color: #4caf50;
   background: rgba(76, 175, 80, 0.15);
   color: #2e7d32;
-}
-
-.preset-btn:hover {
-  border-color: rgba(255, 255, 255, 0.8);
 }
 
 .custom-inputs {
@@ -591,7 +624,7 @@ onUnmounted(() => {
 .phase-label {
   font-size: 18px;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.5);
+  color: wheat;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
@@ -623,7 +656,7 @@ onUnmounted(() => {
   text-align: center;
   font-size: 28px;
   font-weight: 600;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 2px solid var(--color-card-border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.3);
   color: #333;
@@ -659,7 +692,7 @@ onUnmounted(() => {
   font-size: 64px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #333;
+  color: wheat;
   letter-spacing: 2px;
 }
 
@@ -683,17 +716,29 @@ onUnmounted(() => {
 }
 
 .btn-start {
-  background: #4caf50;
-  color: #fff;
+  border-radius: var(--border-radius);
+  border: 2px solid #4caf50;
+  background: transparent;
+  border-color: #4caf50;
+  color: #4caf50;
+  transition: all 0.2s;
 }
 
 .btn-pause {
-  background: #ff9800;
-  color: #fff;
+  border-radius: var(--border-radius);
+  border: 2px solid #ff9800;
+  background: transparent;
+  border-color: #ff9800;
+  color: #ff9800;
+  transition: all 0.2s;
 }
 
 .btn-stop {
-  background: #f44336;
-  color: #fff;
+  border-radius: var(--border-radius);
+  border: 2px solid #f44336;
+  background: transparent;
+  border-color: #f44336;
+  color: #f44336;
+  transition: all 0.2s;
 }
 </style>

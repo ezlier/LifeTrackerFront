@@ -12,7 +12,7 @@ const routeLabel: Record<string, string> = {
   timeline: '时间线',
   items: '内容库',
   item: '详情',
-  settings: '设置',
+  settings: '关于',
 }
 
 const time = ref(Date.now())

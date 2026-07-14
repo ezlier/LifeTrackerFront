@@ -22,3 +22,11 @@ export function getTypePieChartData(): Promise<Record<string, number>> {
 export function getStatusPieChartData(): Promise<Record<string, number>> {
   return api.get(`/heatmap/status`);
 }
+
+export function getDurationPieChartData(): Promise<Record<string, number>> {
+  return api.get(`/heatmap/Duration`);
+}
+
+export function getFocusStatusPieChartData(): Promise<Record<string, number>> {
+  return api.get(`/heatmap/focusStatus`);
+}

@@ -15,6 +15,12 @@ export function loginApi(params: LoginParams): Promise<LoginResult> {
   return http.post("/login", params);
 }
 
-export function signupApi(params: LoginParams): Promise<void> {
-  return http.post("/signup", params);
+export interface SignupParams {
+  username: string;
+  newPwd: string;
+  newPwd2: string;
+}
+
+export function signupApi(params: SignupParams): Promise<void> {
+  return http.post("/user/create", params);
 }

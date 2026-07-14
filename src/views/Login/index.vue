@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { signupApi } from '@/api/auth'
 
 const auth = useAuthStore()
-const form = reactive({ username: '', password: '' })
+const form = reactive({ username: '', password: '', newPwd2: '' })
 const pending = ref(false)
 const isLogin = ref(true)
 const successMsg = ref('')
@@ -15,6 +15,7 @@ function toggleMode() {
   successMsg.value = ''
   form.username = ''
   form.password = ''
+  form.newPwd2 = ''
 }
 
 async function handleSubmit() {
@@ -27,9 +28,15 @@ async function handleSubmit() {
     if (isLogin.value) {
       await auth.login(form)
     } else {
-      await signupApi({ username: form.username, password: form.password })
+      if (form.password !== form.newPwd2) {
+        auth.error = '两次密码不一致'
+        pending.value = false
+        return
+      }
+      await signupApi({ username: form.username, newPwd: form.password, newPwd2: form.newPwd2 })
       successMsg.value = '注册成功，请登录'
       form.password = ''
+      form.newPwd2 = ''
       isLogin.value = true
     }
   } catch (e: unknown) {
@@ -88,6 +95,17 @@ async function handleSubmit() {
           placeholder="密码"
           size="large"
           show-password-on="click"
+          class="mb-3"
+          @keyup.enter="handleSubmit"
+        />
+
+        <n-input
+          v-if="!isLogin"
+          v-model:value="form.newPwd2"
+          type="password"
+          placeholder="确认密码"
+          size="large"
+          show-password-on="click"
           class="mb-4"
           @keyup.enter="handleSubmit"
         />
@@ -108,6 +126,7 @@ async function handleSubmit() {
           </n-button>
         </div>
       </n-card>
+
     </div>
   </div>
 </template>

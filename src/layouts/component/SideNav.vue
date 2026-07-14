@@ -21,8 +21,8 @@
         <n-divider class="divider" />
 
         <div class="user-info">
-          <n-avatar size="large">{{ avatarLetter }}</n-avatar>
-          <span class="username">{{ displayName }}</span>
+          <n-avatar size="large" :src="user?.avatar || ''" :alt="user?.name || '未登录用户'"  />
+          <span class="username">{{ user?.name || '未登录用户' }}</span>
         </div>
 
         <n-button text size="small" type="error" @click="handleLogout">
@@ -34,9 +34,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getUser, type User } from '@/api/user'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -49,8 +50,14 @@ const navItems = [
   { label: '内容库', to: '/items' },
   { label: '时间线', to: '/timeline' },
   { label: '番茄钟', to: '/focus' },
-  { label: '设置', to: '/settings' },
+  { label: '关于', to: '/settings' },
 ]
+
+type UserProfile = User & { introduction?: string | null }
+
+const user = ref<UserProfile>()
+const userLoading = ref(false)
+const userError = ref('')
 
 function isActive(to: string) {
   if (to === '/items') return route.path.startsWith('/items')
@@ -62,6 +69,20 @@ function isActive(to: string) {
 function handleLogout() {
   authStore.logout()
 }
+
+async function loadUser() {
+  userLoading.value = true
+  userError.value = ''
+  try {
+    user.value = await getUser()
+  } catch (error) {
+    userError.value = error instanceof Error ? error.message : '用户资料加载失败'
+  } finally {
+    userLoading.value = false
+  }
+}
+
+onMounted(() => loadUser())
 </script>
 
 <style scoped>

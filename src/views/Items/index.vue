@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { getItems, createItem, type ItemRecord } from '@/api/item'
 import ItemCard from '@/components/ItemCard.vue'
 import CommonPagination from '@/components/CommonPagination.vue'
+import CreateItemModal from './components/CreateItemModal.vue'
 
 type SortDir = 'asc' | 'desc' | null
 
@@ -18,12 +19,6 @@ const rawItems = ref<ItemRecord[]>([])
 const pageSize = 12
 const showModal = ref(false)
 const submitting = ref(false)
-const newForm = ref({
-  title: '',
-  type: 'book',
-  cover: '',
-  description: '',
-})
 
 const typeOptions = [
   { label: '动画', value: 'anime' },
@@ -131,19 +126,11 @@ function resetFilters() {
   currentPage.value = 1
 }
 
-function openCreateModal() {
-  newForm.value = { title: '', type: 'book', cover: '', description: '' }
-  showModal.value = true
-}
 
-async function handleCreate() {
-  if (!newForm.value.title.trim()) return
+async function handleCreate(data: { title: string; type: string; cover: string; description: string }) {
   submitting.value = true
   try {
-    await createItem({
-      ...newForm.value,
-      status: 'planned',
-    })
+    await createItem({ ...data, status: 'planned' })
     showModal.value = false
     fetchItems()
   } finally {
@@ -192,41 +179,13 @@ onMounted(() => {
 
       <!-- 创建按钮 -->
       <template #suffix>
-        <n-button type="primary" size="small" @click="openCreateModal">创建</n-button>
-        <n-modal v-model:show="showModal">
-          <n-card style="width: 480px" title="创建内容项" :bordered="false">
-            <n-form label-placement="left" label-width="80">
-              <n-form-item label="标题" required>
-                <n-input v-model:value="newForm.title" placeholder="请输入标题" />
-              </n-form-item>
-              <n-form-item label="类型" required>
-                <n-select v-model:value="newForm.type" :options="typeOptions" />
-              </n-form-item>
-              <n-form-item label="封面">
-                <n-input v-model:value="newForm.cover" placeholder="封面图片 URL（可选）" />
-              </n-form-item>
-              <n-form-item label="描述">
-                <n-input
-                  v-model:value="newForm.description"
-                  type="textarea"
-                  placeholder="请输入描述（可选）"
-                  :autosize="{ minRows: 2, maxRows: 4 }"
-                />
-              </n-form-item>
-            </n-form>
-            <template #footer>
-              <n-space justify="space-around">
-                <n-button @click="showModal = false">取消</n-button>
-                <n-button type="primary" :loading="submitting" @click="handleCreate">
-                  创建
-                </n-button>
-              </n-space>
-            </template>
-          </n-card>
-        </n-modal>
+        <n-button type="primary" size="small" @click="showModal = true">创建</n-button>
       </template>
 
     </n-tabs>
+
+    <CreateItemModal v-model:showing="showModal" :submitting="submitting" :type-options="typeOptions"
+      @create="handleCreate" />
 
     <!-- 卡片网格 -->
     <div v-if="loading" class="items-loading">加载中...</div>

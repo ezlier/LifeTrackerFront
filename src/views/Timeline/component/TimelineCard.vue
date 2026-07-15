@@ -35,12 +35,12 @@ const timeText = computed(() => {
 
 const displayTitle = computed(() => {
   if (props.event.itemTitle) return props.event.itemTitle
-  if (props.event.focusSessionDuration != null && props.event.focusSessionDuration != 0) {
+  if (props.event.eventType === 'FOCUS_SESSION_COMPLETE') {
     const minutes = Math.round(props.event.focusSessionDuration / 60)
     if (minutes == 0) return '完成' + props.event.focusSessionDuration + '秒专注'
-    return `完成 ${minutes} 分钟专注`
-  } else if (props.event.focusSessionDuration == 0){
-    return '启动了一个计时'
+    return `完成 ${minutes} 分钟` + props.event.focusSessionGoal
+  } else if (props.event.eventType === 'FOCUS_SESSION_START'){
+    return '开始' + props.event.focusSessionGoal
   }
   return ' ( ⩌⤚⩌)'
 })

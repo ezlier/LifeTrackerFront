@@ -279,7 +279,7 @@ onMounted(() => loadItem())
 
 .item-description {
   margin-top: 12px;
-  height: 200px;
+  min-height: 200px;
 }
 
 .item-card {

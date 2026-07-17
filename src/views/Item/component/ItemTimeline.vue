@@ -135,7 +135,6 @@ onMounted(() => load())
 .timeline-wrap {
   padding: 32px 40px 60px;
   border-top: 1px solid var(--color-ui);
-  margin-top: 24px;
 }
 
 .timeline-header {

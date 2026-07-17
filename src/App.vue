@@ -3,25 +3,18 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { useUiStore } from '@/stores/ui'
-import DefaultLayout from '@/layouts/DefaultLayout.vue'
 
-const route = useRoute()
 const ui = useUiStore()
-
-const useLayout = computed(
-  () => route.meta.requiresAuth || route.path === '/',
-)
 
 const naiveTheme = computed(() => (ui.isDark ? darkTheme : null))
 </script>
 
 <template>
   <n-config-provider :theme="naiveTheme" :locale="zhCN" :date-locale="dateZhCN">
-    <n-message-provider>
-      <DefaultLayout v-if="useLayout">
+    <n-dialog-provider>
+      <n-message-provider>
         <router-view />
-      </DefaultLayout>
-      <router-view v-else />
-    </n-message-provider>
+      </n-message-provider>
+    </n-dialog-provider>
   </n-config-provider>
 </template>

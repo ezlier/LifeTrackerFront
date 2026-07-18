@@ -34,6 +34,7 @@ declare module 'vue' {
     NH1: typeof import('naive-ui')['NH1']
     NHeatmap: typeof import('naive-ui')['NHeatmap']
     NInput: typeof import('naive-ui')['NInput']
+    NInputNumber: typeof import('naive-ui')['NInputNumber']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NModal: typeof import('naive-ui')['NModal']
     NNumberAnimation: typeof import('naive-ui')['NNumberAnimation']
